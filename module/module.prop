@@ -1,7 +1,7 @@
 id=overlayforgold
-name=Vender Hardware Overlay for gold & iron
-version=v1
-versionCode=1
+name=Vendor Hardware Overlay for gold & iron
+version=v2.0
+versionCode=20
 author=ukriu
 description=A vendor hardware overlay for Redmi Note 13 5G/13R Pro/Poco x6 Neo
 updateJson=https://raw.githubusercontent.com/ukriu/OverlayForGold/main/update.json
