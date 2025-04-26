@@ -1,6 +1,6 @@
 {
-  "version": "v2.0",
-  "versionCode": 20,
+  "version": "v2.1",
+  "versionCode": 21,
   "zipUrl": "https://github.com/ukriu/OverlayForGold/releases/latest/download/OverlayForGold.zip",
   "changelog": "https://raw.githubusercontent.com/ukriu/OverlayForGold/main/CHANGELOG.md"
 }
