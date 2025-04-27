@@ -1,5 +1,8 @@
 # OverlayForGold
 
+## Release v2.2
+\- Fix incorrect navigation bar height
+
 ## Release v2.1
 \- Fix bootloops on HyperOS 1 and below vendor.
 \- Fix Autobrightness & a lot more
