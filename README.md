@@ -1,8 +1,8 @@
 # OverlayForGold
-A Magisk/KernelSU/Apatch Module to add the treble droid hardware vendor overlay for Redmi Note 13 5G
+A Magisk/KernelSU/Apatch Module to add a hardware vendor overlay for Redmi Note 13 5G / 13R Pro / POCO X6 Neo [gold/iron] for GSIs.  
 
 ## What does it do?
-It fixes various visual glitches and adds power optimization to Generic System Images for Redmi Note 13 5G
+It fixes various visual glitches and adds power optimization to Generic System Images for Redmi Note 13 5G / 13R Pro / POCO X6 Neo [gold/iron].
 
 ## How does it work?
 It adds the treble overlay file to `/system/product/overlays/` so that GSIs without the latest treble droid overlays can use the updated overlay for gold/iron!

@@ -2,29 +2,14 @@ name: Release
 
 on:
   push:
-    branches:
-      - main
     paths:
       - '.github/workflows/release.yml'
       - 'module/**'
       - 'update.json'
   workflow_dispatch:
     inputs:
-      create_release:
-        description: 'Create a new release?'
-        required: true
-        default: 'false'
-        type: choice
-        options:
-          - 'true'
-          - 'false'
-      mark_prerelease:
-        description: "Mark as prerelease?"
-        required: true
-        type: boolean
-        default: false
-      mark_draft:
-        description: "Mark release as draft?"
+      force_release:
+        description: 'Force change release file?'
         required: true
         type: boolean
         default: false
@@ -34,52 +19,82 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v6.0.2
+        with:
+          fetch-depth: 2
 
       - name: Set variables
         id: setup
         run: |
-          REPO_NAME=$(echo "${{ github.repository }}" | cut -d '/' -f2)
-          COMMIT_ID=$(git rev-parse --short HEAD)
-          VERSION=$(jq -r .version update.json)
-          CHANGELOG=CHANGELOG.md
-          ZIP_NAME=$REPO_NAME-$COMMIT_ID
-          RELEASE_ZIP=$REPO_NAME
-          MODULE_PATH="$(pwd)/module/"
+          MODULE_NAME="OverlayForGold"
+          MODULE_DESC="A Magisk/KernelSU/Apatch Module to add a hardware vendor overlay for Redmi Note 13 5G / 13R Pro / POCO X6 Neo [gold/iron] for GSIs."
+          CHANGELOG_FILE="$(pwd)/CHANGELOG.md"
+          MODULE_PATH=$(pwd)/module/
           
-          echo "REPO_NAME=${REPO_NAME}" >> $GITHUB_ENV
-          echo "COMMIT_ID=${COMMIT_ID}" >> $GITHUB_ENV
-          echo "VERSION=${VERSION}" >> $GITHUB_ENV
-          echo "CHANGELOG=${CHANGELOG}" >> $GITHUB_ENV
-          echo "ZIP_NAME=${ZIP_NAME}" >> $GITHUB_ENV
-          echo "RELEASE_ZIP=${RELEASE_ZIP}" >> $GITHUB_ENV
-          echo "MODULE_PATH=$MODULE_PATH" >> $GITHUB_ENV
+          CURRENT_VERSION_CODE="$(jq -r .versionCode update.json)" >> $GITHUB_ENV
+          echo "CURRENT_VERSION_CODE=$(jq -r .versionCode update.json)" >> $GITHUB_ENV
+          PREVIOUS_VERSION_CODE="$(jq -r .versionCode <(git show HEAD~1:update.json))"
+          COMMIT_ID="$(git rev-parse --short HEAD)" >> $GITHUB_ENV
+          echo "COMMIT_ID=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
+          echo "VERSION=$(jq -r .version update.json)" >> $GITHUB_ENV
+          echo "MODULE_PATH=${MODULE_PATH}" >> $GITHUB_ENV
+          CHANGELOG_RAW=$(git diff HEAD^ HEAD -- ${CHANGELOG_FILE} | grep '^+[^+]' | sed 's/^+//')
+          {
+            echo "CHANGELOG<<EOF"
+            echo -e "## ${MODULE_NAME}\n${MODULE_DESC}\n\n---\n\n# Changelog:\n${CHANGELOG_RAW}"
+            echo "EOF"
+          } >> $GITHUB_ENV
+          
+          if [ "$CURRENT_VERSION_CODE" -gt "$PREVIOUS_VERSION_CODE" ]; then
+            echo "version_changed=true" >> $GITHUB_ENV
+            echo "ZIP_NAME=$MODULE_NAME" >> $GITHUB_ENV
+          elif [ "${{ inputs.force_release }}" == "true" ]; then
+            echo "ZIP_NAME=$MODULE_NAME" >> $GITHUB_ENV
+          else
+            echo "version_changed=false" >> $GITHUB_ENV
+            echo "ZIP_NAME=${MODULE_NAME}_${CURRENT_VERSION_CODE}-${COMMIT_ID}" >> $GITHUB_ENV
+          fi
+
+      - name: Setting up test release
+        run: |
+          cp -r ${{ env.MODULE_PATH }} ./debug_module/
+          sed -i "s/^\(version=\)\(.*\)/\1\2_${{ env.CURRENT_VERSION_CODE }}-${{ env.COMMIT_ID }}/" ./debug_module/module.prop
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7.0.1
         with:
           name: ${{ env.ZIP_NAME }}
-          path: ${{ env.MODULE_PATH }}**
+          path: debug_module/**
+          compression-level: 9
 
       - name: Compressing files
-        if: ${{ inputs.create_release == 'true' }}
+        if: ${{ env.version_changed == 'true' || inputs.force_release }}
         run: |
           echo "Compressing files..."
           cd ${{ env.MODULE_PATH }}
-          zip -r ${{ env.RELEASE_ZIP }}.zip *
-          echo "Created zip file: ${{ env.RELEASE_ZIP }}.zip"
+          zip -r -9 ${{ env.ZIP_NAME }}.zip *
+          echo "Created zip file: ${{ env.ZIP_NAME }}.zip"
           mv *.zip ../
-          echo "Moved file down a dir"
 
       - name: Create release
-        if: ${{ inputs.create_release == 'true' }}
-        uses: softprops/action-gh-release@v2
+        if: ${{ env.version_changed == 'true' }}
+        uses: softprops/action-gh-release@v3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          files: "${{ env.RELEASE_ZIP }}.zip"
+          files: "${{ env.ZIP_NAME }}.zip"
           tag_name: "${{ env.VERSION }}"
           name: "Release ${{ env.VERSION }}"
-          body_path: "${{ env.CHANGELOG }}"
-          draft: ${{ inputs.mark_draft }}
-          prerelease: ${{ inputs.mark_prerelease }}
+          body: "${{ env.CHANGELOG }}"
+          draft: false
+          prerelease: false
+
+      - name: Force update release file
+        if: ${{ inputs.force_release }}
+        uses: softprops/action-gh-release@v3
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          files: "${{ env.ZIP_NAME }}.zip"
+          tag_name: "${{ env.VERSION }}"
+          name: "Release ${{ env.VERSION }}"
