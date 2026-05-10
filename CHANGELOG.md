@@ -4,6 +4,9 @@ A Magisk/KernelSU/Apatch Module to add a hardware vendor overlay for Redmi Note 
 ---
 
 # Changelog:
+##$ Release v2.4
+- Add SystemUI Overlay
+
 ### Release v2.3
 - Use better device detection prop for iron and gold.
 
